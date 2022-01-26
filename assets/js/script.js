@@ -29,7 +29,6 @@ var taskFormHandler = function(event) {
     if (isEdit) {
       var taskId = formEl.getAttribute("data-task-id");
       completeEditTask(taskNameInput, taskTypeInput, taskId);
-
     } else {
         var taskDataObj = {
             name: taskNameInput,
@@ -44,28 +43,44 @@ var taskFormHandler = function(event) {
 var createTaskEl = function(taskDataObj) {
     var listItemEl = document.createElement("li");
     listItemEl.className = "task-item";
-  
-    // add task id as a custom attribute
     listItemEl.setAttribute("data-task-id", taskIdCounter);
   
     var taskInfoEl = document.createElement("div");
     taskInfoEl.className = "task-info";
-    taskInfoEl.innerHTML = "<h3 class='task-name'>" + taskDataObj.name + "</h3><span class='task-type'>" + taskDataObj.type + "</span>";
+    taskInfoEl.innerHTML =
+      "<h3 class='task-name'>" + taskDataObj.name + "</h3><span class='task-type'>" + taskDataObj.type + "</span>";
     listItemEl.appendChild(taskInfoEl);
-    var taskActionEl = createTaskActions(taskIdCounter);
-
-    listItemEl.appendChild(taskActionEl);
-
-    tasksToDoEl.appendChild(listItemEl);
-
+  
+    var taskActionsEl = createTaskActions(taskIdCounter);
+    listItemEl.appendChild(taskActionsEl);
+  
+    switch (taskDataObj.status) {
+      case "to do":
+        taskActionsEl.querySelector("select[name='status-change']").selectedIndex = 0;
+        tasksToDoEl.append(listItemEl);
+        break;
+      case "in progress":
+        taskActionsEl.querySelector("select[name='status-change']").selectedIndex = 1;
+        tasksInProgressEl.append(listItemEl);
+        break;
+      case "completed":
+        taskActionsEl.querySelector("select[name='status-change']").selectedIndex = 2;
+        tasksCompletedEl.append(listItemEl);
+        break;
+      default:
+        console.log("Something went wrong!");
+    }
+  
+    // save task as an object with name, type, status, and id properties then push it into tasks array
     taskDataObj.id = taskIdCounter;
-
+  
     tasks.push(taskDataObj);
-
-    // increase task counter for next unique id
+  
+    // save tasks to localStorage
+    saveTasks();
+  
+    // increase task counter for next unique task id
     taskIdCounter++;
-
-    saveTasks()
 };
 
 var createTaskActions = function(taskId) {
@@ -109,7 +124,9 @@ var createTaskActions = function(taskId) {
 
 var completeEditTask = function(taskName, taskType, taskId) {
     // find task list item with taskId value
-    var taskSelected = document.querySelector(".task-item[data-task-id='" + taskId + "']");
+    var taskSelected = document.querySelector(
+        ".task-item[data-task-id='" + taskId + "']"
+    );
   
     // set new values
     taskSelected.querySelector("h3.task-name").textContent = taskName;
@@ -189,6 +206,7 @@ var editTask = function(taskId) {
     document.querySelector("select[name='task-type']").value = taskType;
     document.querySelector("#save-task").textContent = "Save Task";
     formEl.setAttribute("data-task-id", taskId);
+    formEl.querySelector("#save-task").textContent = "Save Task";
 };
 
 var deleteTask = function(taskId) {
@@ -200,21 +218,38 @@ var deleteTask = function(taskId) {
     // loop through current tasks
     for (var i = 0; i < tasks.length; i++) {
      // if tasks[i].id doesn't match the value of taskId, let's keep that task and push it into the new array
-    if (tasks[i].id !== parseInt(taskId)) {
-    updatedTaskArr.push(tasks[i]);
+        if (tasks[i].id !== parseInt(taskId)) {
+            updatedTaskArr.push(tasks[i]);
+        }
     }
 
     saveTasks()
 }
 
-// reassign tasks array to be the same as updatedTaskArr
-tasks = updatedTaskArr;
-};
-
 var saveTasks = function() {
     localStorage.setItem("tasks", JSON.stringify(tasks));
 }
 
+var loadTasks = function() {
+    var savedTasks = localStorage.getItem("tasks");
+    // if there are no tasks, set tasks to an empty array and return out of the function
+    if (!savedTasks) {
+      return false;
+    }
+    console.log("Saved tasks found!");
+    // else, load up saved tasks
+  
+    // parse into array of objects
+    savedTasks = JSON.parse(savedTasks);
+  
+    // loop through savedTasks array
+    for (var i = 0; i < savedTasks.length; i++) {
+      // pass each task object into the `createTaskEl()` function
+      createTaskEl(savedTasks[i]);
+    }
+  };
+
 formEl.addEventListener("submit", taskFormHandler);
 pageContentEl.addEventListener("click", taskButtonHandler);
 pageContentEl.addEventListener("change", taskStatusChangeHandler);
+loadTasks() ;
